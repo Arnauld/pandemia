@@ -1,0 +1,7 @@
+(ns pandemia.ext.es-test
+  (:use clojure.test
+        pandemia.ext.es))
+
+(deftest a-test
+  (testing "FIXME, If I fail."
+    (is (= 1 (let [x (rand-run 5)] 1)))))

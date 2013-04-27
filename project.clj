@@ -5,8 +5,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.0"]]
   :plugins [[lein-cucumber "1.0.2"]]
-  :cucumber-feature-paths ["src/features/"]
-  :source-paths ["src/clojure"]
-  :test-paths ["src/test"]
-  :resource-paths ["src/resources"] ; non-code files included in classpath/jar
+  :cucumber-feature-paths ["features/"]
+  :source-paths ["src/"]
+  :test-paths ["test/"]
+  :resource-paths ["resources/"] ; non-code files included in classpath/jar
   )

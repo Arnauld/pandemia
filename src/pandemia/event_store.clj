@@ -1,10 +1,5 @@
-(ns pandemia.event)
-
-(defprotocol EventStore
-  (retrieve-event-stream [this aggregate-id])
-  (append-events [this aggregate-id previous-event-stream events]))
-
-(defrecord EventStream [version transactions])
+(ns pandemia.event-store
+  (:use pandemia.core))
 
 
 (import java.util.concurrent.ConcurrentHashMap)

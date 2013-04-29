@@ -1,6 +1,5 @@
 (ns pandemia.game
-	(:use pandemia.core
-		  pandemia.event))
+	(:use pandemia.core))
 
 (defrecord CreateGameCommand [aggregate-id player-id ])
 (defrecord ChangeGameDifficultyCommand [aggregate-id player-id difficulty])
@@ -36,34 +35,19 @@
 ;;
 ;; Handle Events
 ;;
+(extend-protocol EventHandler
+  GameCreatedEvent
+  (apply-event [event state]
+    (assoc state 
+      :state :created
+      :creator-id (:creator-id event)))
 
-(defmulti apply-event (fn [state event] (class event)))
-(defmethod apply-event GameCreatedEvent [state event]
-  (assoc state 
-    :state :created
-    :creator-id (:creator-id event)))
+  GameDifficultyChangedEvent
+  (apply-event [event state]
+    (assoc state 
+      :difficulty (:difficulty event)))
 
-(defmethod apply-event ChangeGameDifficultyCommand [state event]
-  (assoc state 
-    :move (:move event)))
-
-(defmethod apply-event GameStartedEvent [state event]
-  (assoc state 
-    :state :started))
-
-;;
-;; Infrastructure
-;;
-(defn apply-events [state events] 
-  (reduce apply-event state events))
-
-;;
-;;
-;;
-(defn handle-command [command event-store]
-  (let [event-stream (retrieve-event-stream event-store (:aggregate-id command))
-        old-events (flatten (:transactions event-stream))
-        current-state (apply-events {} old-events)
-        new-events (perform command current-state)]
-    (println new-events)
-    (append-events event-store (:aggregate-id command) event-stream new-events)))
+  GameStartedEvent
+  (apply-event [event state]
+    (assoc state 
+      :state :started)))

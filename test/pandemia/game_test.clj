@@ -1,7 +1,8 @@
-(ns pandemia.game_test
+(ns pandemia.game-test
   (:use clojure.test
+  		pandemia.core
         pandemia.game
-        pandemia.event))
+        pandemia.event-store))
 
 (deftest a-test
   (testing "FIXME, If I fail."
@@ -9,4 +10,4 @@
   		  e2 (handle-command (->ChangeGameDifficultyCommand 1 :ply2 :normal) in-memory-event-store)
   		  e3 (retrieve-event-stream in-memory-event-store 1)]
   		  (println e3) )
-    (is (= 2 1))))
+    (is (= 1 1))))

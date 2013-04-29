@@ -13,7 +13,7 @@
 ;;
 
 (defprotocol EventHandler
-  (apply-event [state event]))
+  (apply-event [event state]))
 
 
 ;;

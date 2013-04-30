@@ -1,9 +1,17 @@
 (ns pandemia.game
 	(:use pandemia.core))
 
+;;
+;; Commands
+;;
+
 (defrecord CreateGameCommand [aggregate-id player-id ])
 (defrecord ChangeGameDifficultyCommand [aggregate-id player-id difficulty])
 (defrecord StartGameCommand [aggregate-id])
+
+;;
+;; Events
+;;
 
 (defrecord GameCreatedEvent [game-id creator-id])
 (defrecord GameDifficultyChangedEvent [game-id player-id difficulty])
@@ -35,6 +43,7 @@
 ;;
 ;; Handle Events
 ;;
+
 (extend-protocol EventHandler
   GameCreatedEvent
   (apply-event [event state]

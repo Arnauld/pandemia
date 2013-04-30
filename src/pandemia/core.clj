@@ -5,6 +5,7 @@
 ;;
 ;;
 ;;
+
 (defprotocol CommandHandler
   (perform [command state]))
 
@@ -27,9 +28,16 @@
 (defrecord EventStream [version transactions])
 
 
+(defn load-events [aggregate-id event-store]
+	(let [event-stream (retrieve-event-stream event-store aggregate-id)
+		  events (flatten (:transactions event-stream))]
+		  ;(println events)
+		  events))
+
 ;;
 ;; Infrastructure
 ;;
+
 (defn apply-events [state events] 
   (reduce 
   	(fn [current-state event] (apply-event event current-state)) 
@@ -38,6 +46,7 @@
 ;;
 ;;
 ;;
+
 (defn handle-command [command event-store]
   (let [event-stream (retrieve-event-stream event-store (:aggregate-id command))
         old-events (flatten (:transactions event-stream))

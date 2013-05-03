@@ -52,5 +52,5 @@
         old-events (flatten (:transactions event-stream))
         current-state (apply-events {} old-events)
         new-events (perform command current-state)]
-    (println new-events)
+    ;(println new-events)
     (append-events event-store (:aggregate-id command) event-stream new-events)))

@@ -5,18 +5,24 @@
 (import java.util.concurrent.ConcurrentHashMap)
 (import java.util.ConcurrentModificationException)
 
-(def in-memory-event-store
-  (let [streams (ConcurrentHashMap.)
-        empty-stream (->EventStream 0 [])]
-    (reify EventStore
-      (retrieve-event-stream [this aggregate-id]
-        (if (.putIfAbsent streams aggregate-id empty-stream)
-          (.get streams aggregate-id)
-          empty-stream))
+(defrecord MemoryStore [streams])
 
-      (append-events [this aggregate-id previous-es events]
-        (let [next-es (->EventStream (inc (:version previous-es))
-                                     (conj (:transactions previous-es)
-                                     events))
-              replaced (.replace streams aggregate-id previous-es next-es)]
-          (when-not replaced (throw (ConcurrentModificationException.))))))))
+(def empty-stream (->EventStream 0 []))
+
+(extend-protocol EventStore
+  MemoryStore
+  (retrieve-event-stream [this aggregate-id]
+    (let [streams (:streams this)]
+      (if (.putIfAbsent streams aggregate-id empty-stream)
+          (.get streams aggregate-id)
+          empty-stream)))
+
+  (append-events [this aggregate-id previous-es events]
+    (let [streams (:streams this)
+          next-es (->EventStream (inc (:version previous-es))
+                                 (conj (:transactions previous-es)
+                                 events))
+          replaced (.replace streams aggregate-id previous-es next-es)]
+      (when-not replaced (throw (ConcurrentModificationException.))))))
+
+(defn new-in-memory-event-store [] (->MemoryStore (ConcurrentHashMap.)))

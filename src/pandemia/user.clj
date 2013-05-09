@@ -15,6 +15,7 @@
 
 (defrecord UserCreatedEvent [aggregate-id pseudo])
 (defrecord UserInfosChangedEvent [aggregate-id delta])
+(defrecord UserGameJoinedEvent [aggregate-id game-id])
 
 ;;
 ;; Entity

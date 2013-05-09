@@ -11,8 +11,7 @@
     (let [store (new-in-memory-event-store)]
         (with-event-store store
             (execute-command (->CreateUserCommand user-id "Carmen"))
-            (execute-command (->ChangeUserInfosCommand user-id {:first_name "Carmen" :last_name "McCallum"}))
-            )
+            (execute-command (->ChangeUserInfosCommand user-id {:first_name "Carmen" :last_name "McCallum"})))
         (let [events (load-events user-id store)
               [tx1 tx2] events]
             (is (instance? pandemia.user.UserCreatedEvent tx1))

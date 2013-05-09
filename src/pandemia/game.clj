@@ -1,62 +1,92 @@
 (ns pandemia.game
-    (:use pandemia.core))
+    (:use pandemia.core
+          pandemia.user))
 
 ;;
 ;; Commands
 ;;
 
-(defrecord CreateGameCommand [aggregate-id player-id ])
-(defrecord ChangeGameDifficultyCommand [aggregate-id player-id difficulty])
-(defrecord StartGameCommand [aggregate-id])
+(defrecord CreateGameCommand [game-id user-id ])
+(defrecord ChangeGameDifficultyCommand [game-id user-id difficulty])
+(defrecord StartGameCommand [game-id])
 
 ;;
 ;; Events
 ;;
 
-(defrecord GameCreatedEvent [game-id creator-id])
-(defrecord GameDifficultyChangedEvent [game-id player-id difficulty])
-(defrecord GameStartedEvent [game-id])
+(defrecord GameCreatedEvent [aggregate-id creator-id])
+(defrecord GameDifficultyChangedEvent [aggregate-id user-id difficulty])
+(defrecord GameStartedEvent [aggregate-id])
+
+
+;;
+;; Entity
+;;
+
+(defrecord Game [])
+
+(defn load-game [game-id]
+    (load-aggregate game-id (Game.)))
+
+
+;;
+;; Handle Events
+;;
+
+(defmulti game-apply-event (fn [game event] (class event)))
+(defmethod game-apply-event GameCreatedEvent [game event]
+    (assoc game 
+      :state :created
+      :creator-id (:creator-id event)))
+(defmethod game-apply-event GameDifficultyChangedEvent [game event]
+    (assoc game 
+      :difficulty (:difficulty event)))
+(defmethod game-apply-event GameStartedEvent [game event]
+    (assoc game 
+      :state :started))
+
+(extend-protocol EventHandler
+    Game
+    (apply-event [this event]
+        (game-apply-event this event)))
 
 ;;
 ;; Handle Commands
 ;;
 
 (extend-protocol CommandHandler
-  CreateGameCommand
-  (perform [command state]
-    (when (:state state)
-      (throw (Exception. "Already created")))
-    [(->GameCreatedEvent (:aggregate-id command) (:player-id command))])
+    CreateGameCommand
+    (perform [command context]
+        (let [game-id (:game-id command)
+              user-id (:user-id command)
+              user (load-user user-id)
+              game (load-game game-id)]
+            (when (:state game)
+                (throw (Exception. "Already created")))
+            (when-not (:state user)
+                (throw (Exception. (str "No user found with id: " user-id))))
+        [(->GameCreatedEvent game-id user-id)]))
 
-  ChangeGameDifficultyCommand
-  (perform [command state]
-    (when-not (= (:state state) :created)
-      (throw (Exception. (str "Incorrect state: " state))))
-    [(->GameDifficultyChangedEvent (:aggregate-id command) (:player-id command) (:difficulty command))])
+    ChangeGameDifficultyCommand
+    (perform [command context]
+        (let [game-id (:game-id command)
+              user-id (:user-id command)
+              user (load-user user-id)
+              game (load-game game-id)
+              state (:state game)]
+            (when-not (= state :created)
+                (throw (Exception. (str "Incorrect state: " state))))
+            (when-not (:state user)
+                (throw (Exception. (str "No user found with id: " user-id))))
+        [(->GameDifficultyChangedEvent game-id user-id (:difficulty command))]))
 
-  GameStartedEvent
-  (perform [command state]
-      (when-not (= (:state state) :created)
-      (throw (Exception. (str "Incorrect state: " state))))
-    [(->GameStartedEvent (:aggregate-id command))]))
+    GameStartedEvent
+    (perform [command context]
+        (let [game-id (:game-id command)
+              game (load-game game-id)
+              state (:state game)]
+            (when-not (= state :created)
+                (throw (Exception. (str "Incorrect state: " state))))
+        [(->GameStartedEvent (:aggregate-id command))])))
 
-;;
-;; Handle Events
-;;
 
-(extend-protocol EventHandler
-  GameCreatedEvent
-  (apply-event [event state]
-    (assoc state 
-      :state :created
-      :creator-id (:creator-id event)))
-
-  GameDifficultyChangedEvent
-  (apply-event [event state]
-    (assoc state 
-      :difficulty (:difficulty event)))
-
-  GameStartedEvent
-  (apply-event [event state]
-    (assoc state 
-      :state :started)))

@@ -37,7 +37,10 @@
 
 (declare ^:dynamic *event-store*)
 
-(defn get-event-store [] @*event-store*)
+(defn get-event-store [] 
+  (let [store @*event-store*]
+    (when (= nil store) (throw (IllegalStateException. "No event store bound!")))
+    store))
 
 (defmacro with-event-store [store & body]
   `(binding [*event-store* (atom ~store)]
@@ -115,17 +118,6 @@
   (reduce 
       (fn [current-state event] (apply-event current-state event)) 
       state events))
-
-;;
-;;
-;;
-
-(defn handle-command [command event-store]
-  (let [event-stream (retrieve-event-stream event-store (:aggregate-id command))
-        old-events (flatten (:events event-stream))
-        current-state (apply-events {} old-events)
-        new-events (perform command current-state)]
-    (append-events event-store (:aggregate-id command) event-stream new-events)))
 
 ;;
 ;;

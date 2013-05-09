@@ -1,7 +1,7 @@
-(ns pandemia.event-store-test
+(ns pandemia.in-memory-event-store-test
   (:use clojure.test
         pandemia.core
-        pandemia.event-store))
+        pandemia.in-memory-event-store))
 
 (defrecord DummyEvent [id data])
 

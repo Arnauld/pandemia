@@ -1,5 +1,5 @@
 (ns pandemia.game
-	(:use pandemia.core))
+    (:use pandemia.core))
 
 ;;
 ;; Commands
@@ -36,9 +36,9 @@
 
   GameStartedEvent
   (perform [command state]
-  	(when-not (= (:state state) :created)
+      (when-not (= (:state state) :created)
       (throw (Exception. (str "Incorrect state: " state))))
-	[(->GameStartedEvent (:aggregate-id command))]))
+    [(->GameStartedEvent (:aggregate-id command))]))
 
 ;;
 ;; Handle Events

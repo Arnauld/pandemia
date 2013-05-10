@@ -65,7 +65,9 @@
                 (throw (Exception. "Already created")))
             (when-not (:state user)
                 (throw (Exception. (str "No user found with id: " user-id))))
-        [(->GameCreatedEvent game-id user-id)]))
+            (when (playing? user)
+                (throw (IllegalStateException. (str "User " user-id " is Already engaged in a game"))))
+        [(->GameCreatedEvent game-id user-id) (->UserGameJoinedEvent user-id game-id)]))
 
     ChangeGameDifficultyCommand
     (perform [command context]

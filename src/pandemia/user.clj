@@ -40,6 +40,11 @@
     (assoc user
         (:delta event)))
 
+(defmethod user-apply-event UserGameJoinedEvent [user event]
+    (assoc user
+        :current-game-id (:game-id event)))
+
+
 (extend-protocol EventHandler
     User
     (apply-event [this event]
@@ -70,4 +75,8 @@
                 [] ;; command does not change anything...
                 [(->UserInfosChangedEvent user-id delta)])))))
 
-
+;;
+;;
+;;
+(defn playing? [user] 
+    (not= (:current-game-id user) nil))

@@ -17,9 +17,11 @@
           (execute-command (->CreateGameCommand gameId userId))
           (execute-command (->ChangeGameDifficultyCommand gameId userId :normal)))
         (let [old-events (load-events gameId store)
-              [tx1 tx2] old-events] ; destructuring ~ pattern matching to retrieve 'transactions' elements
+              [tx1 tx2 tx3] old-events] ; destructuring ~ pattern matching to retrieve 'transactions' elements
           ;(println old-events)
           (is (instance? pandemia.game.GameCreatedEvent tx1))
           (is (= userId (:creator-id tx1)))
-          (is (instance? pandemia.game.GameDifficultyChangedEvent tx2))
-          (is (= :normal  (:difficulty tx2)))))))
+          (is (instance? pandemia.game.GameJoinedEvent tx2))
+          (is (= userId (:user-id tx2)))
+          (is (instance? pandemia.game.GameDifficultyChangedEvent tx3))
+          (is (= :normal (:difficulty tx3)))))))

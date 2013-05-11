@@ -16,20 +16,30 @@
 (deftest scenario-1
   (testing "Create a game and change its difficulty"
     (let [store (new-in-memory-event-store)
-          userId "user-1"
+          userId1 "user-1"
+          userId2 "user-2"
           gameId "game-1"]
         (with-event-store store
-          (execute-command (->CreateUserCommand userId "Gregory"))
-          (execute-command (->CreateGameCommand gameId userId))
-          (execute-command (->ChangeGameDifficultyCommand gameId userId :normal)))
+          (execute-command (->CreateUserCommand userId1 "Gregory"))
+          (execute-command (->CreateUserCommand userId2 "Wilson"))
+          (execute-command (->CreateGameCommand gameId userId1))
+          (execute-command (->ChangeGameDifficultyCommand gameId userId1 :normal))
+          (execute-command (->JoinGameCommand gameId userId2))
+          (execute-command (->StartGameCommand gameId)))
         (let [game-events (load-events gameId store)
-              user-events (load-events userId store)
-              [ge1 ge2] game-events
-              [ue1 ue2] user-events]
-            ;(println user-events "\n---\n" game-events)
+              user1-events (load-events userId1 store)
+              user2-events (load-events userId2 store)
+              [ge1 ge2 ge3] game-events
+              [ue1 ue2] user1-events]
+            (println (str "user1-events: " (reduce #(str %1 "\n    " %2) user1-events)
+                          "\n---\n" 
+                          "user2-events: " (reduce #(str %1 "\n    " %2) user2-events)
+                          "\n---\n"
+                          "game-events : " (reduce #(str %1 "\n    " %2) game-events)))
             (is (instance? pandemia.game.GameCreatedEvent ge1))
-            (is (instance? pandemia.game.GameDifficultyChangedEvent ge2))
+            (is (instance? pandemia.game.GameJoinedEvent ge2))
+            (is (instance? pandemia.game.GameDifficultyChangedEvent ge3))
             (is (instance? pandemia.user.UserCreatedEvent ue1))
             (is (instance? pandemia.user.UserGameJoinedEvent ue2)) 
-            (is (= userId (:creator-id ge1)))
-            (is (= :normal  (:difficulty ge2)))))))
+            (is (= userId1 (:creator-id ge1)))
+            (is (= :normal  (:difficulty ge3)))))))

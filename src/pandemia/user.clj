@@ -9,6 +9,7 @@
 (defrecord CreateUserCommand [user-id pseudo])
 (defrecord ChangeUserInfosCommand [user-id infos])
 
+
 ;;
 ;; Events
 ;;

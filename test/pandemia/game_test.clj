@@ -14,7 +14,10 @@
           userId "user-1"]
         (with-event-store store
           (execute-command (->CreateUserCommand userId "McCallum"))
-          (execute-command (->CreateGameCommand gameId userId))
+          (execute-command (map->CreateGameCommand {:game-id gameId 
+                                                    :user-id userId
+                                                    :difficulty :hard 
+                                                    :ruleset :default}))
           (execute-command (->ChangeGameDifficultyCommand gameId userId :normal)))
         (let [old-events (load-events gameId store)
               [tx1 tx2 tx3] old-events] ; destructuring ~ pattern matching to retrieve 'transactions' elements

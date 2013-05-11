@@ -1,13 +1,14 @@
 (ns pandemia.game
     (:use pandemia.core
-          pandemia.user)
+          pandemia.user
+          pandemia.util)
     (:require [clojure.set :as set]))
 
 ;;
 ;; Commands
 ;;
 
-(defrecord CreateGameCommand [game-id user-id ])
+(defrecord CreateGameCommand [game-id user-id difficulty ruleset])
 (defrecord ChangeGameDifficultyCommand [game-id user-id difficulty])
 (defrecord StartGameCommand [game-id])
 (defrecord JoinGameCommand [game-id user-id])
@@ -16,11 +17,16 @@
 ;; Events
 ;;
 
-(defrecord GameCreatedEvent [aggregate-id creator-id])
+(defrecord GameCreatedEvent [aggregate-id creator-id difficulty ruleset])
 (defrecord GameDifficultyChangedEvent [aggregate-id user-id difficulty])
 (defrecord GameStartedEvent [aggregate-id])
 (defrecord GameJoinedEvent  [aggregate-id user-id])
-(defrecord GameUserRoleDefinedEvent [aggregate-id user-id role])
+(defrecord GameUserRoleDefinedEvent [aggregate-id user-id role]
+  Object
+  (toString [this] (str "GameUserRoleDefinedEvent@" (system-id this) "{"
+                        "aggregate-id: " aggregate-id 
+                        ", user-id: " user-id 
+                        ", role: " role "}")))
 
 ;;
 ;; Entities
@@ -28,7 +34,6 @@
 
 (defrecord Game [])
 (defrecord Player [user-id role])
-
 
 (defn load-game [game-id]
     (load-aggregate game-id (Game.)))
@@ -42,7 +47,23 @@
 (defn players-without-role [players]
   (filter (fn [player] (= :random (:role player))) players))
 
-(def all-roles #{:dispatcher :medic :operationsExpert :researcher :scientist})
+;;
+;; Constants
+;;
+(def all-default-roles #{:dispatcher :medic :operationsExpert :researcher :scientist})
+(def all-difficulties #{:easy :normal :hard :nightmare})
+
+(def all-ruleset 
+    {:default {:roles all-default-roles}})
+
+
+
+;;
+;; Game methods
+;;
+
+(defn get-roles [game]
+  (:roles (:ruleset game)))
 
 ;;
 ;; Handle Events
@@ -53,6 +74,8 @@
     (assoc game 
       :state :created
       :creator-id (:creator-id event)
+      :ruleset ((:ruleset event) all-ruleset)
+      :difficulty (:difficulty event)
       :players []))
 (defmethod game-apply-event GameDifficultyChangedEvent [game event]
     (assoc game 
@@ -80,6 +103,8 @@
     (perform [command context]
         (let [game-id (:game-id command)
               user-id (:user-id command)
+              difficulty (:difficulty command)
+              ruleset (:ruleset command)
               user (load-user user-id)
               game (load-game game-id)]
             (when (:state game)
@@ -88,7 +113,11 @@
                 (throw (Exception. (str "No user found with id: " user-id))))
             (when (playing? user)
                 (throw (IllegalStateException. (str "User " user-id " is already engaged in a game"))))
-        [(->GameCreatedEvent game-id user-id) 
+            (when-not (contains? all-difficulties difficulty)
+                (throw (Exception. (str "Unsupported difficulty: " difficulty))))
+            (when-not (contains? all-ruleset ruleset)
+                (throw (Exception. (str "Unsupported ruleset: " ruleset))))
+        [(->GameCreatedEvent game-id user-id difficulty ruleset) 
          (->GameJoinedEvent game-id user-id)
          (->UserGameJoinedEvent user-id game-id)]))
 
@@ -133,7 +162,7 @@
                 (throw (Exception. (str "Insufficient number of player: " (count players)))))
             (let [players-without-role (players-without-role players)
                   used-roles (map #(:role %) (players-with-role players))
-                  remaining-roles (shuffle (set/difference all-roles (set used-roles)))]
+                  remaining-roles (shuffle (set/difference (get-roles game) (set used-roles)))]
                   (concat 
                       [(->GameStartedEvent game-id)]
                       ;; assign role to all players that miss one

@@ -22,7 +22,10 @@
         (with-event-store store
           (execute-command (->CreateUserCommand userId1 "Gregory"))
           (execute-command (->CreateUserCommand userId2 "Wilson"))
-          (execute-command (->CreateGameCommand gameId userId1))
+          (execute-command (map->CreateGameCommand {:game-id gameId 
+                                                    :user-id userId1 
+                                                    :difficulty :hard 
+                                                    :ruleset :default}))
           (execute-command (->ChangeGameDifficultyCommand gameId userId1 :normal))
           (execute-command (->JoinGameCommand gameId userId2))
           (execute-command (->StartGameCommand gameId)))

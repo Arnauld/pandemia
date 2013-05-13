@@ -39,15 +39,6 @@
     (load-aggregate game-id (Game.)))
 
 ;;
-;;
-
-(defn players-with-role [players]
-  (filter (fn [player] (not= :random (:role player))) players))
-
-(defn players-without-role [players]
-  (filter (fn [player] (= :random (:role player))) players))
-
-;;
 ;; Constants
 ;;
 (def all-default-roles #{:dispatcher :medic :operationsExpert :researcher :scientist})
@@ -93,6 +84,23 @@
     Game
     (apply-event [this event]
         (game-apply-event this event)))
+
+;;
+;; Command helpers
+;;
+(defn- used-roles [players]
+  (let [players-with-role (filter #(not= :random (:role %)) players)]
+    map #(:role %) players-with-role))
+
+(defn- events-for-player-without-role [game game-id]
+  (let [players (:players game)
+        players-without-role (filter #(= :random (:role %)) players)
+        used-roles (used-roles players)
+        remaining-roles (shuffle (set/difference (get-roles game) (set used-roles)))]
+        (map (fn [player role] 
+              (->GameUserRoleDefinedEvent game-id (:user-id player) role)) 
+              players-without-role 
+              remaining-roles)))
 
 ;;
 ;; Handle Commands
@@ -160,15 +168,12 @@
                 (throw (Exception. (str "Incorrect state: " state))))
             (when (< (count players) 2)
                 (throw (Exception. (str "Insufficient number of player: " (count players)))))
-            (let [players-without-role (players-without-role players)
-                  used-roles (map #(:role %) (players-with-role players))
-                  remaining-roles (shuffle (set/difference (get-roles game) (set used-roles)))]
-                  (concat 
-                      [(->GameStartedEvent game-id)]
-                      ;; assign role to all players that miss one
-                      (map (fn [player role] 
-                          (->GameUserRoleDefinedEvent game-id (:user-id player) role)) 
-                          players-without-role 
-                          remaining-roles))))))
+            (concat 
+                [(->GameStartedEvent game-id)]
+                ;; assign role to all players that don't have one yet
+                (events-for-player-without-role game game-id)
+                ;; prepare the draw-piles
+
+                ))))
 
 

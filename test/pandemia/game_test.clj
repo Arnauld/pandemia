@@ -16,7 +16,7 @@
           (execute-command (->CreateUserCommand userId "McCallum"))
           (execute-command (map->CreateGameCommand {:game-id gameId 
                                                     :user-id userId
-                                                    :difficulty :hard 
+                                                    :difficulty :heroic 
                                                     :ruleset :default}))
           (execute-command (->ChangeGameDifficultyCommand gameId userId :normal)))
         (let [old-events (load-events gameId store)

@@ -24,7 +24,7 @@
           (execute-command (->CreateUserCommand userId2 "Wilson"))
           (execute-command (map->CreateGameCommand {:game-id gameId 
                                                     :user-id userId1 
-                                                    :difficulty :hard 
+                                                    :difficulty :heroic
                                                     :ruleset :default}))
           (execute-command (->ChangeGameDifficultyCommand gameId userId1 :normal))
           (execute-command (->JoinGameCommand gameId userId2))

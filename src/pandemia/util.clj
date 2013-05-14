@@ -14,3 +14,22 @@
                 (assoc res k v) 
                 res))
         {} changeset))
+
+(defn split [nb-parts coll]
+    (let [sz (count coll)
+          pile-sz  (int (/ sz nb-parts))
+          extra-n  (mod sz nb-parts)
+          splitted (reduce (fn [pred i]
+            (let [available (:cards pred)
+                  extra (:extra pred)
+                  delta (if (< 0 extra) 1 0)
+                  amount (+ pile-sz delta)
+                  selected (take amount available)
+                  remaining (drop amount available)]
+                {:extra (- extra delta)
+                 :parts (conj (:parts pred) selected)
+                 :cards remaining})) 
+            {:extra extra-n
+             :parts [] 
+             :cards coll} (range nb-parts))]
+        (:parts splitted)))

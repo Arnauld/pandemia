@@ -28,3 +28,35 @@
           (is (= userId (:user-id tx2)))
           (is (instance? pandemia.game.GameDifficultyChangedEvent tx3))
           (is (= :normal (:difficulty tx3)))))))
+
+(deftest test-number-of-cubes
+  (testing "Number of cubes - city and color defined"
+    (let [game {:cities {:NewYork {:blue 1}
+                         :London  {:blue 3}
+                         :Paris   {:blue 1}
+                         :Essen   {:blue 2}}}]
+          (is (= 1 (number-of-cubes game :Paris :blue)))))
+  
+  (testing "Number of cubes - city defined but no color"
+    (let [game {:cities {:NewYork {:blue 1}
+                         :London  {:blue 3}
+                         :Paris   {:blue 1}
+                         :Essen   {:blue 2}}}]
+          (is (= 0 (number-of-cubes game :Paris :black)))))
+
+  (testing "Number of cubes - city not yet defined"
+    (let [game {:cities {:NewYork {:blue 1}
+                         :London  {:blue 3}
+                         :Paris   {:blue 1}
+                         :Essen   {:blue 2}}}]
+          (is (= 0 (number-of-cubes game :Milan :black))))))
+
+(deftest test-trigger-outbreak
+  (testing "One outbreak: no chain"
+    (let [game {:ruleset :default
+                :cities {{:NewYork {:blue 1}}
+                         {:London  {:blue 3}}
+                         {:Paris   {:blue 1}}
+                         {:Essen   {:blue 2}}}}
+          events (trigger-outbreak game :London :blue)]
+        (println "trigger-outbreak-events: " events))))

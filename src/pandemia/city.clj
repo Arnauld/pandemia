@@ -74,7 +74,8 @@
 ;;
 ;; basic graph support
 ;;
-
+(defn adjacent-cities-of [graph city]
+    (nodes graph city))
 
 (def city-graph 
 	(let [g the-graph]

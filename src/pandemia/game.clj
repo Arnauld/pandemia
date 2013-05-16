@@ -3,7 +3,8 @@
           pandemia.user
           pandemia.util)
     (:require [clojure.set :as set]
-              [pandemia.card :as card]))
+              [pandemia.card :as card]
+              [pandemia.city :as city]))
 
 ;;
 ;; Commands
@@ -39,11 +40,14 @@
   (toString [this] (str "PlayerDrawPileInitializedEvent@" (system-id this) "{"
                         "aggregate-id: " aggregate-id 
                         ", cards: " cards "}")))
-(defrecord InfectionDrawPileInitializedEvent [aggregate-id cards]
+(defrecord InfectionDrawPileInitializedEvent [aggregate-id cards discarded]
   Object
   (toString [this] (str "InfectionDrawPileInitializedEvent@" (system-id this) "{"
                         "aggregate-id: " aggregate-id 
-                        ", cards: " cards "}")))
+                        ", cards: " cards 
+                        ", discarded: " discarded "}")))
+
+(defrecord CityInfectedEvent [aggregate-id city-id nb-cubes color])
 
 ;;
 ;; Entities
@@ -73,8 +77,11 @@
                                       (cond (= :introduction difficulty) 4
                                             (= :normal difficulty) 5
                                             (= :heroic difficulty) 6
-                                            :else (throw (Exception. (str "Unsupported difficulty " difficulty)))))}})
+                                            :else (throw (Exception. (str "Unsupported difficulty " difficulty)))))
+       :nb-cubes-outbreak-threshold 3}})
 
+(defn get-ruleset [game]
+  ((:ruleset game) all-ruleset))
 
 
 ;;
@@ -82,7 +89,7 @@
 ;;
 
 (defn get-roles [game]
-  (:roles (:ruleset game)))
+  (:roles (get-ruleset game)))
 
 ;;
 ;; Handle Events
@@ -94,7 +101,7 @@
       :game-id (:aggregate-id event)
       :state :created
       :creator-id (:creator-id event)
-      :ruleset ((:ruleset event) all-ruleset)
+      :ruleset (:ruleset event)
       :difficulty (:difficulty event)
       :players []))
 (defmethod game-apply-event GameDifficultyChangedEvent [game event]
@@ -133,7 +140,7 @@
               remaining-roles)))
 
 (defn- complete-for-difficulty [game player-cards]
-  (let [ruleset (:ruleset game)
+  (let [ruleset (get-ruleset game)
         difficulty (:difficulty game)
         nb-cards (apply (:nb-pandemic-for-difficulty ruleset) [difficulty])
         ; Divide the remaining Player cards into 'nbEpidemicCards' *equal* (or at least close to) piles.
@@ -149,7 +156,7 @@
 (defn initialize-player-cards [game]
   (let [game-id (:game-id game)
         players (:players game)
-        ruleset (:ruleset game)
+        ruleset (get-ruleset game)
         distributable-cards (shuffle (:distributable-player-cards ruleset))
         nb-cards-per-player (apply (:nb-cards-per-player ruleset) [players])
         reduced (reduce 
@@ -163,11 +170,88 @@
         player-draw-pile (complete-for-difficulty game (:remainings reduced))]
       (conj (:events reduced) (PlayerDrawPileInitializedEvent. game-id (seq player-draw-pile)))))
 
+(defn number-of-cubes [game city-id color]
+  (let [nb (get-in game [:cities city-id color])]
+    (if (nil? nb) 0 nb)))
+
+(defn trigger-outbreak 
+  ([game city-id color]
+      (trigger-outbreak game city-id color city/city-graph {:outbreaked {city-id 0}} 0))
+  ([game city-id color city-graph state generation]
+      (let [ruleset (get-ruleset game)
+            nb-cubes-outbreak (:nb-cubes-outbreak-threshold ruleset)
+            adjacents (city/adjacent-cities-of city-graph city-id)
+            calculated (reduce 
+              (fn [pred adj-city]
+                  (let [infestors (get-in pred [:infestors adj-city])
+                        old-generation (city-id infestors)
+                        new-generation (if (nil? old-generation) generation (min generation old-generation))
+                        next-state (update-in pred [:infestors adj-city] assoc city-id new-generation)
+                        nb-cubes (+ (number-of-cubes game adj-city color) 
+                                    (count (get-in next-state [:infestors adj-city])))
+                        next-gen (+ 1 generation)]
+                    (println "nb-cubes: " nb-cubes ", nb-cubes-outbreak: " nb-cubes-outbreak)
+                    ;; City can outbreak only once
+                    ;; outbreak is propagated only if the generation is lower than the 
+                    ;; one already propagated. So that all infestors should be lowered.
+                    (if (> nb-cubes nb-cubes-outbreak)
+                      (trigger-outbreak adj-city color city-graph next-state next-gen)
+                      next-state)))
+              state adjacents)]
+            calculated)))
+
+;
+; Infect the city with the given number of cubes for the specified disease.
+; That is add the given number of cubes to the existings ones (if any).
+;
+; *Note that the eradication status is not checked by this method,
+; that is the following rule is not verified:*
+;
+; > If, however, the pictured city is of a color that has been
+; > eradicated, do not add a cube.
+;
+; *Whereas the outbreak rule is handled:*
+; 
+; > If a city already has 3 cubes in it of the color being added, instead of
+; > adding a cube to the city, an outbreak occurs in that color.
+;
+; @param cityId city to infect
+; @param nbCubes number of cube to add
+; @param disease disease the cubes belongs to
+(defn infect-city 
+  ([game city-id nb-cubes color]
+    (let [game-id (:game-id game)
+          ruleset (get-ruleset game)
+          nb-cubes-outbreak (:nb-cubes-outbreak-threshold ruleset)
+          nb-cubes-old (number-of-cubes game city-id color)
+          nb-cubes-new (+ nb-cubes-old nb-cubes)]
+        (if (> nb-cubes-new nb-cubes-outbreak)
+            (trigger-outbreak game city-id color)
+            [(CityInfectedEvent. game-id city-id nb-cubes color)])))
+  ([game city-id nb-cubes]
+    (infect-city game city-id nb-cubes (city/color-of city-id))))
+
 (defn initialize-infection-cards [game]
   (let [game-id (:game-id game)
-        ruleset (:ruleset game)
-        infection-cards (shuffle (:infection-cards ruleset))]
-    [(InfectionDrawPileInitializedEvent. game-id (seq infection-cards))]))
+        ruleset (get-ruleset game)
+        nbCubes [3 3 3 2 2 2 1 1 1]
+        nbCardsDiscarded (apply + nbCubes)
+        infection-cards (shuffle (:infection-cards ruleset))
+        distribution (reduce 
+                          (fn [pred nb]
+                            (let [old-remainings (:remainings pred)
+                                  new-remainings (drop 1 old-remainings)
+                                  card (first old-remainings)
+                                  new-events (concat (:events pred) (infect-city game card nb))]
+                              {:remainings new-remainings
+                               :events new-events}))
+                          {:remainings infection-cards :events []} nbCubes)
+        cards-remaining (:remainings distribution)
+        cards-discarded (take nbCardsDiscarded infection-cards)
+        infected-cities-events (:events distribution)]
+        (conj infected-cities-events
+              (InfectionDrawPileInitializedEvent. game-id cards-remaining cards-discarded))))
+
 
 ;;
 ;; Handle Commands

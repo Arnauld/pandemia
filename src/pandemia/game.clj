@@ -170,35 +170,114 @@
         player-draw-pile (complete-for-difficulty game (:remainings reduced))]
       (conj (:events reduced) (PlayerDrawPileInitializedEvent. game-id (seq player-draw-pile)))))
 
+
+;
+; Returns the number of cubes of the given color (disease) for the specified city.
+;
 (defn number-of-cubes [game city-id color]
   (let [nb (get-in game [:cities city-id color])]
     (if (nil? nb) 0 nb)))
 
-(defn trigger-outbreak 
+;
+; An outbreak occurs if a player is required to add a cube to a city that already has 3 cubes in it
+; of that color. When this happens, instead of adding a 4th cube, add a cube of the outbreaking color
+; to each adjacent city.
+;
+; *Chain Reactions*
+; If any of these new cubes would cause the total number of cubes of that color in an adjacent city
+; to exceed 3, additional outbreakedCities may occur, causing a chain reaction.
+;
+; *Note that each city may only outbreak once in each chain reaction.*
+;
+(defn calculate-outbreak-chain 
   ([game city-id color]
-      (trigger-outbreak game city-id color city/city-graph {:outbreaked {city-id 0}} 0))
+      (calculate-outbreak-chain game city-id color city/city-graph {:outbreaks {city-id 0}} 0))
   ([game city-id color city-graph state generation]
       (let [ruleset (get-ruleset game)
             nb-cubes-outbreak (:nb-cubes-outbreak-threshold ruleset)
             adjacents (city/adjacent-cities-of city-graph city-id)
             calculated (reduce 
               (fn [pred adj-city]
-                  (let [infestors (get-in pred [:infestors adj-city])
+                  (let [infestors (get-in pred [:infections adj-city])
                         old-generation (city-id infestors)
                         new-generation (if (nil? old-generation) generation (min generation old-generation))
-                        next-state (update-in pred [:infestors adj-city] assoc city-id new-generation)
+                        next-state (update-in pred [:infections adj-city] assoc city-id new-generation)
                         nb-cubes (+ (number-of-cubes game adj-city color) 
-                                    (count (get-in next-state [:infestors adj-city])))
-                        next-gen (+ 1 generation)]
-                    (println "nb-cubes: " nb-cubes ", nb-cubes-outbreak: " nb-cubes-outbreak)
+                                    (count (get-in next-state [:infections adj-city])))
+                        next-gen (+ 1 generation)
+                        prev-gen (get-in next-state [:outbreaks adj-city])
+                        chaining (> nb-cubes nb-cubes-outbreak)]
                     ;; City can outbreak only once
                     ;; outbreak is propagated only if the generation is lower than the 
                     ;; one already propagated. So that all infestors should be lowered.
-                    (if (> nb-cubes nb-cubes-outbreak)
-                      (trigger-outbreak adj-city color city-graph next-state next-gen)
+                    (if (and chaining
+                             (or (nil? prev-gen)
+                                    (> prev-gen generation)))
+                      (calculate-outbreak-chain
+                            game 
+                            adj-city 
+                            color 
+                            city-graph 
+                            (update-in next-state [:outbreaks] merge {adj-city next-gen}) 
+                            next-gen)
                       next-state)))
               state adjacents)]
             calculated)))
+
+; {:infections {:SaintPetersburg {:Essen 1}, 
+;               :Essen {:London 0, :Paris 1}, 
+;               :Milan {:Essen 1, :Paris 1}, 
+;               :London {:Essen 1, :Paris 1, :Madrid 1}, 
+;               :NewYork {:London 0, :Madrid 1}, 
+;               :Paris {:Essen 1, :London 0, :Madrid 1}, 
+;               :Algiers {:Paris 1, :Madrid 1}, 
+;               :SaoPaulo {:Madrid 1}, 
+;               :Madrid {:Paris 1, :London 0}}, 
+;  :outbreaks {:Essen 1, :Paris 1, :Madrid 1, :London 0}}
+;
+; =>
+; :generations [
+;     {:outbreaks [:London]
+;      :infested [:Essen :NewYork :Paris :Madrid]}
+;     {:outbreaks [:Essen :Paris :Madrid]
+;      :infested [:SaintPetersburg :Milan :NewYork :Algiers :SaoPaulo]}
+; ]
+; 
+; Reduce the outbreak chain to generation based sequence.
+;
+(defn reduce-outbreak-chain [game chain]
+  (let [chain-outbreaks (:outbreaks chain)
+        chain-infested  (:infections chain)
+        generation-max (reduce (fn [pred [k gen]] (max gen pred)) 0 chain-outbreaks)
+        nb-generations (+ 1 generation-max)
+        generations (reduce 
+          (fn [collected generation]
+            (let [already-outbreaked (:already-outbreaked collected)
+                  outbreaks (reduce (fn [pred [city gen]]
+                                        (if (= gen generation) (conj pred city) pred))
+                                    [] chain-outbreaks)
+                  next-outbreaks (set (concat already-outbreaked outbreaks))
+                  infested  (reduce (fn [pred [city infestors]]
+                                        (let [outbreaked (contains? next-outbreaks city)
+                                              gen-infestors (filter (fn [[c gen]]
+                                                    (= gen generation)) infestors)]
+                                            (if (and (not outbreaked)
+                                                     (seq gen-infestors))
+                                                (assoc pred city (keys gen-infestors)) 
+                                                pred)))
+                                    {} chain-infested)]
+                  (-> collected
+                    (assoc :already-outbreaked next-outbreaks)
+                    (update-in [:generations] conj {:outbreaks outbreaks :infested infested}))))
+          {:already-outbreaked [] :generations []} (range nb-generations))]
+        generations))
+
+;
+;
+(defn trigger-outbreak [game city color]
+  (let [chain (calculate-outbreak-chain game city color)]
+    (reduce-outbreak-chain game chain color)))
+
 
 ;
 ; Infect the city with the given number of cubes for the specified disease.

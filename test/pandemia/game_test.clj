@@ -51,12 +51,65 @@
                          :Essen   {:blue 2}}}]
           (is (= 0 (number-of-cubes game :Milan :black))))))
 
-(deftest test-trigger-outbreak
+
+;;    Toronto-----N.Y------------London------Essen---SaintPetersbourg
+;;         \      / \               | \       /  |
+;;      Washington   \             /   `-Paris    \
+;;                    `-----Madrid------/   | `--Milan
+;;                          /    \          |
+;;                  SaoPaulo      `-------Algiers
+
+(deftest test-calculate-outbreak-chain 
   (testing "One outbreak: no chain"
     (let [game {:ruleset :default
-                :cities {{:NewYork {:blue 1}}
-                         {:London  {:blue 3}}
-                         {:Paris   {:blue 1}}
-                         {:Essen   {:blue 2}}}}
-          events (trigger-outbreak game :London :blue)]
-        (println "trigger-outbreak-events: " events))))
+                :cities {:NewYork {:blue 1}
+                         :London  {:blue 3}
+                         :Paris   {:blue 1}
+                         :Essen   {:blue 2}}}
+          chain (calculate-outbreak-chain  game :London :blue)]
+        (println "calculate-outbreak-chain : " chain "\n" game))))
+
+(deftest test-calculate-outbreak-chain-chaining 
+  (testing "Multiple outbreak: chained in different generation"
+    (let [game {:ruleset :default
+                :cities {:NewYork {:blue 1}
+                         :London  {:blue 3}
+                         :Madrid  {:blue 3}
+                         :Paris   {:blue 2}
+                         :Essen   {:blue 2}}}
+          chain (calculate-outbreak-chain  game :London :blue)]
+        (println "calculate-outbreak-chain : " chain "\n" game)))
+
+  (testing "Multiple outbreak: chained within same generation"
+    (let [game {:ruleset :default
+                :cities {:NewYork {:blue 3}
+                         :London  {:blue 3}
+                         :Paris   {:blue 3}
+                         :Madrid  {:blue 2}
+                         :Essen   {:blue 2}}}
+          chain (calculate-outbreak-chain  game :London :blue)
+          payload (reduce-outbreak-chain game chain)]
+        (println "\n\ncalculate-outbreak-chain : " chain)
+        (println ":: " payload)
+        (doseq [p (:generations payload)] (println " > " p))
+        (println "•••"))))
+
+(deftest test-reduce-outbreak-chain
+  (testing "Reduce outbreak chain : simple case"
+      (let [game {:ruleset :default
+                  :cities {:Paris {:blue 1}
+                           :NewYork {:blue 1}
+                           :London {:blue 3}
+                           :Essen {:blue 2}}}
+            chain {:infections {:Essen {:London 0}
+                                :NewYork {:London 0}
+                                :Paris {:London 0}
+                                :Madrid {:London 0}}
+                   :outbreaks {:London 0}}
+            payload (reduce-outbreak-chain game chain)]
+          (println "reduce-outbreak-chain  " chain "\n\t => " payload ))))
+
+
+
+
+

@@ -47,7 +47,19 @@
                         ", cards: " cards 
                         ", discarded: " discarded "}")))
 
-(defrecord CityInfectedEvent [aggregate-id city-id nb-cubes color])
+(defrecord CityInfectedEvent [aggregate-id city-id nb-cubes color]
+  Object
+  (toString [this] (str "CityInfectedEvent@" (system-id this) "{"
+                        "aggregate-id: " aggregate-id 
+                        ", city-id: " city-id 
+                        ", nb-cubes: " nb-cubes 
+                        ", color: " color "}")))
+
+(defrecord OutbreakChainEvent [aggregate-id outbreaks]
+  Object
+  (toString [this] (str "OutbreakChainEvent@" (system-id this) "{"
+                        "aggregate-id: " aggregate-id 
+                        ", outbreaks: " outbreaks "}")))
 
 ;;
 ;; Entities
@@ -275,8 +287,10 @@
 ;
 ;
 (defn trigger-outbreak [game city color]
-  (let [chain (calculate-outbreak-chain game city color)]
-    (reduce-outbreak-chain game chain color)))
+  (let [game-id (:game-id game)
+        chain (calculate-outbreak-chain game city color)
+        reduced (reduce-outbreak-chain game chain)]
+        [(OutbreakChainEvent. game-id reduced)]))
 
 
 ;
@@ -329,7 +343,7 @@
         cards-discarded (take nbCardsDiscarded infection-cards)
         infected-cities-events (:events distribution)]
         (conj infected-cities-events
-              (InfectionDrawPileInitializedEvent. game-id cards-remaining cards-discarded))))
+              (InfectionDrawPileInitializedEvent. game-id (seq cards-remaining) (seq cards-discarded)))))
 
 
 ;;

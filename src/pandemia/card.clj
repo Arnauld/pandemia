@@ -12,12 +12,11 @@
 ;;
 ;;
 ;;
-(def epidemic {:type :epidemic})
+(def epidemic [:epidemic])
 
-(def city-player-cards (map (fn [city] {:type :city 
-										:city city}) all-cities))
+(def city-player-cards (map (fn [city] [:city city]) all-cities))
 
-(def default-special-player-cards (map (fn [kind] {:type :special :kind kind}) 
+(def default-special-player-cards (map (fn [kind] [:special kind]) 
 	#{
 		; Move a pawn (yours or another player's) to any city.
      	; You must have a player's permission to move their pawn.

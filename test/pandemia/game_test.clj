@@ -67,7 +67,8 @@
                          :Paris   {:blue 1}
                          :Essen   {:blue 2}}}
           chain (calculate-outbreak-chain  game :London :blue)]
-        (println "calculate-outbreak-chain : " chain "\n" game))))
+        ; (println "calculate-outbreak-chain : " chain "\n" game)
+        )))
 
 (deftest test-calculate-outbreak-chain-chaining 
   (testing "Multiple outbreak: chained in different generation"
@@ -78,7 +79,8 @@
                          :Paris   {:blue 2}
                          :Essen   {:blue 2}}}
           chain (calculate-outbreak-chain  game :London :blue)]
-        (println "calculate-outbreak-chain : " chain "\n" game)))
+        ; (println "calculate-outbreak-chain : " chain "\n" game)
+        ))
 
   (testing "Multiple outbreak: chained within same generation"
     (let [game {:ruleset :default
@@ -89,10 +91,7 @@
                          :Essen   {:blue 2}}}
           chain (calculate-outbreak-chain  game :London :blue)
           payload (reduce-outbreak-chain game chain)]
-        (println "\n\ncalculate-outbreak-chain : " chain)
-        (println ":: " payload)
-        (doseq [p (:generations payload)] (println " > " p))
-        (println "•••"))))
+        (doseq [p (:generations payload)] (println " > " p)))))
 
 (deftest test-reduce-outbreak-chain
   (testing "Reduce outbreak chain : simple case"

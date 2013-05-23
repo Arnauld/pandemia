@@ -3,7 +3,8 @@
         pandemia.core
         pandemia.game
         pandemia.user
-        pandemia.in-memory-event-store))
+        pandemia.in-memory-event-store)
+  (:require [pandemia.event :as event]))
 
 ;; --- DUMMY
 
@@ -39,10 +40,10 @@
                           "user2-events: " (reduce #(str %1 "\n    " %2) user2-events)
                           "\n---\n"
                           "game-events : " (reduce #(str %1 "\n    " %2) game-events)))
-            (is (instance? pandemia.game.GameCreatedEvent ge1))
-            (is (instance? pandemia.game.GameJoinedEvent ge2))
-            (is (instance? pandemia.game.GameDifficultyChangedEvent ge3))
-            (is (instance? pandemia.user.UserCreatedEvent ue1))
-            (is (instance? pandemia.user.UserGameJoinedEvent ue2)) 
+            (is (= :pandemia.game.GameCreatedEvent (event/full-type ge1)))
+            (is (= :pandemia.game.GameJoinedEvent (event/full-type ge2)))
+            (is (= :pandemia.game.GameDifficultyChangedEvent (event/full-type ge3)))
+            (is (= :pandemia.user.UserCreatedEvent (event/full-type ue1)))
+            (is (= :pandemia.user.UserGameJoinedEvent (event/full-type ue2)))
             (is (= userId1 (:creator-id ge1)))
             (is (= :normal  (:difficulty ge3)))))))

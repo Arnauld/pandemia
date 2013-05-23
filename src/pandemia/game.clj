@@ -1,10 +1,12 @@
 (ns pandemia.game
     (:use pandemia.core
-          pandemia.user
-          pandemia.util)
+          pandemia.user)
+    (:use [pandemia.event :only [defevent]])
     (:require [clojure.set :as set]
               [pandemia.card :as card]
-              [pandemia.city :as city]))
+              [pandemia.city :as city]
+              [pandemia.util :as util]
+              [pandemia.event :as event]))
 
 ;;
 ;; Commands
@@ -19,47 +21,16 @@
 ;; Events
 ;;
 
-(defrecord GameCreatedEvent [aggregate-id creator-id difficulty ruleset])
-(defrecord GameDifficultyChangedEvent [aggregate-id user-id difficulty])
-(defrecord GameStartedEvent [aggregate-id])
-(defrecord GameJoinedEvent  [aggregate-id user-id])
-(defrecord GameUserRoleDefinedEvent [aggregate-id user-id role]
-  Object
-  (toString [this] (str "GameUserRoleDefinedEvent@" (system-id this) "{"
-                        "aggregate-id: " aggregate-id 
-                        ", user-id: " user-id 
-                        ", role: " role "}")))
-(defrecord PlayerCardAddedToHandEvent [aggregate-id user-id cards]
-  Object
-  (toString [this] (str "PlayerCardAddedToHandEvent@" (system-id this) "{"
-                        "aggregate-id: " aggregate-id 
-                        ", user-id: " user-id 
-                        ", cards: " cards "}")))
-(defrecord PlayerDrawPileInitializedEvent [aggregate-id cards]
-  Object
-  (toString [this] (str "PlayerDrawPileInitializedEvent@" (system-id this) "{"
-                        "aggregate-id: " aggregate-id 
-                        ", cards: " cards "}")))
-(defrecord InfectionDrawPileInitializedEvent [aggregate-id cards discarded]
-  Object
-  (toString [this] (str "InfectionDrawPileInitializedEvent@" (system-id this) "{"
-                        "aggregate-id: " aggregate-id 
-                        ", cards: " cards 
-                        ", discarded: " discarded "}")))
-
-(defrecord CityInfectedEvent [aggregate-id city-id nb-cubes color]
-  Object
-  (toString [this] (str "CityInfectedEvent@" (system-id this) "{"
-                        "aggregate-id: " aggregate-id 
-                        ", city-id: " city-id 
-                        ", nb-cubes: " nb-cubes 
-                        ", color: " color "}")))
-
-(defrecord OutbreakChainEvent [aggregate-id outbreaks]
-  Object
-  (toString [this] (str "OutbreakChainEvent@" (system-id this) "{"
-                        "aggregate-id: " aggregate-id 
-                        ", outbreaks: " outbreaks "}")))
+(defevent GameCreatedEvent [aggregate-id creator-id difficulty ruleset])
+(defevent GameDifficultyChangedEvent [aggregate-id user-id difficulty])
+(defevent GameStartedEvent [aggregate-id])
+(defevent GameJoinedEvent  [aggregate-id user-id])
+(defevent GameUserRoleDefinedEvent [aggregate-id user-id role])
+(defevent PlayerCardAddedToHandEvent [aggregate-id user-id cards])
+(defevent PlayerDrawPileInitializedEvent [aggregate-id cards])
+(defevent InfectionDrawPileInitializedEvent [aggregate-id cards discarded])
+(defevent CityInfectedEvent [aggregate-id city-id nb-cubes color])
+(defevent OutbreakChainEvent [aggregate-id outbreaks])
 
 ;;
 ;; Entities
@@ -107,8 +78,8 @@
 ;; Handle Events
 ;;
 
-(defmulti game-apply-event (fn [game event] (class event)))
-(defmethod game-apply-event GameCreatedEvent [game event]
+(defmulti game-apply-event (fn [game event] (event/simple-type event)))
+(defmethod game-apply-event :GameCreatedEvent [game event]
     (assoc game 
       :game-id (:aggregate-id event)
       :state :created
@@ -116,13 +87,13 @@
       :ruleset (:ruleset event)
       :difficulty (:difficulty event)
       :players []))
-(defmethod game-apply-event GameDifficultyChangedEvent [game event]
+(defmethod game-apply-event :GameDifficultyChangedEvent [game event]
     (assoc game 
       :difficulty (:difficulty event)))
-(defmethod game-apply-event GameStartedEvent [game event]
+(defmethod game-apply-event :GameStartedEvent [game event]
     (assoc game 
       :state :started))
-(defmethod game-apply-event GameJoinedEvent [game event]
+(defmethod game-apply-event :GameJoinedEvent [game event]
     (assoc game 
       :players (conj (:players game) (Player. (:user-id event) :random))))
 
@@ -156,7 +127,7 @@
         difficulty (:difficulty game)
         nb-cards (apply (:nb-pandemic-for-difficulty ruleset) [difficulty])
         ; Divide the remaining Player cards into 'nbEpidemicCards' *equal* (or at least close to) piles.
-        list-of-piles (split nb-cards player-cards)]
+        list-of-piles (util/split nb-cards player-cards)]
         (reduce 
           (fn [pred pile]
             ; Shuffle 1 Epidemic card (face down) into each pile.
@@ -177,10 +148,10 @@
                           new-remainings (drop (:nb pl) old-remainings)
                           cards (take (:nb pl) old-remainings)]
                         {:remainings new-remainings
-                         :events (conj (:events pred) (PlayerCardAddedToHandEvent. game-id (:player-id pl) (seq cards)))}))
+                         :events (conj (:events pred) (->PlayerCardAddedToHandEvent game-id (:player-id pl) (seq cards)))}))
                   {:remainings distributable-cards :events []} nb-cards-per-player)
         player-draw-pile (complete-for-difficulty game (:remainings reduced))]
-      (conj (:events reduced) (PlayerDrawPileInitializedEvent. game-id (seq player-draw-pile)))))
+      (conj (:events reduced) (->PlayerDrawPileInitializedEvent game-id (seq player-draw-pile)))))
 
 
 ;
@@ -290,7 +261,7 @@
   (let [game-id (:game-id game)
         chain (calculate-outbreak-chain game city color)
         reduced (reduce-outbreak-chain game chain)]
-        [(OutbreakChainEvent. game-id reduced)]))
+        [(->OutbreakChainEvent game-id reduced)]))
 
 
 ;
@@ -320,7 +291,7 @@
           nb-cubes-new (+ nb-cubes-old nb-cubes)]
         (if (> nb-cubes-new nb-cubes-outbreak)
             (trigger-outbreak game city-id color)
-            [(CityInfectedEvent. game-id city-id nb-cubes color)])))
+            [(->CityInfectedEvent game-id city-id nb-cubes color)])))
   ([game city-id nb-cubes]
     (infect-city game city-id nb-cubes (city/color-of city-id))))
 
@@ -343,7 +314,7 @@
         cards-discarded (take nbCardsDiscarded infection-cards)
         infected-cities-events (:events distribution)]
         (conj infected-cities-events
-              (InfectionDrawPileInitializedEvent. game-id (seq cards-remaining) (seq cards-discarded)))))
+              (->InfectionDrawPileInitializedEvent game-id (seq cards-remaining) (seq cards-discarded)))))
 
 
 ;;

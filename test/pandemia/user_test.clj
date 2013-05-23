@@ -2,7 +2,8 @@
   (:use clojure.test
         pandemia.core
         pandemia.user
-        pandemia.in-memory-event-store))
+        pandemia.in-memory-event-store)
+  (:require [pandemia.event :as event]))
 
 (def user-id 1)
 
@@ -14,6 +15,6 @@
             (execute-command (->ChangeUserInfosCommand user-id {:first_name "Carmen" :last_name "McCallum"})))
         (let [events (load-events user-id store)
               [tx1 tx2] events]
-            (is (instance? pandemia.user.UserCreatedEvent tx1))
-            (is (instance? pandemia.user.UserInfosChangedEvent tx2))))))
+            (is (= :pandemia.user.UserCreatedEvent (event/full-type tx1)))
+            (is (= :pandemia.user.UserInfosChangedEvent (event/full-type tx2)))))))
 

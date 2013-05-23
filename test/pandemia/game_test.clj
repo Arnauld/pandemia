@@ -3,7 +3,8 @@
       pandemia.core
         pandemia.game
         pandemia.user
-        pandemia.in-memory-event-store))
+        pandemia.in-memory-event-store)
+  (:require [pandemia.event :as event]))
 
 (def aggregate-id 1)
 
@@ -22,11 +23,11 @@
         (let [old-events (load-events gameId store)
               [tx1 tx2 tx3] old-events] ; destructuring ~ pattern matching to retrieve 'transactions' elements
           ;(println old-events)
-          (is (instance? pandemia.game.GameCreatedEvent tx1))
+          (is (= :pandemia.game.GameCreatedEvent (event/full-type tx1)))
           (is (= userId (:creator-id tx1)))
-          (is (instance? pandemia.game.GameJoinedEvent tx2))
+          (is (= :pandemia.game.GameJoinedEvent (event/full-type tx2)))
           (is (= userId (:user-id tx2)))
-          (is (instance? pandemia.game.GameDifficultyChangedEvent tx3))
+          (is (= :pandemia.game.GameDifficultyChangedEvent (event/full-type tx3)))
           (is (= :normal (:difficulty tx3)))))))
 
 (deftest test-number-of-cubes

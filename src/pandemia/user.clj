@@ -1,6 +1,8 @@
 (ns pandemia.user
     (:use pandemia.core
-          pandemia.util))
+          pandemia.util)
+    (:use [pandemia.event :only [defevent]])
+    (:require [pandemia.event :as event]))
 
 ;;
 ;; Commands
@@ -14,9 +16,9 @@
 ;; Events
 ;;
 
-(defrecord UserCreatedEvent [aggregate-id pseudo])
-(defrecord UserInfosChangedEvent [aggregate-id delta])
-(defrecord UserGameJoinedEvent [aggregate-id game-id])
+(defevent UserCreatedEvent [aggregate-id pseudo])
+(defevent UserInfosChangedEvent [aggregate-id delta])
+(defevent UserGameJoinedEvent [aggregate-id game-id])
 
 ;;
 ;; Entity
@@ -32,16 +34,16 @@
 ;; Handle Events
 ;;
 
-(defmulti user-apply-event (fn [user event] (class event)))
-(defmethod user-apply-event UserCreatedEvent [user event]
+(defmulti user-apply-event (fn [user event] (event/simple-type event)))
+(defmethod user-apply-event :UserCreatedEvent [user event]
     (assoc user 
         :state :created))
 
-(defmethod user-apply-event UserInfosChangedEvent [user event]
+(defmethod user-apply-event :UserInfosChangedEvent [user event]
     (assoc user
         (:delta event)))
 
-(defmethod user-apply-event UserGameJoinedEvent [user event]
+(defmethod user-apply-event :UserGameJoinedEvent [user event]
     (assoc user
         :current-game-id (:game-id event)))
 

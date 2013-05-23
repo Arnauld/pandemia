@@ -16,6 +16,7 @@
 (defrecord ChangeGameDifficultyCommand [game-id user-id difficulty])
 (defrecord StartGameCommand [game-id])
 (defrecord JoinGameCommand [game-id user-id])
+(defrecord DesignateFirstPlayerCommand [game-id user-id])
 
 ;;
 ;; Events
@@ -31,6 +32,7 @@
 (defevent InfectionDrawPileInitializedEvent [aggregate-id cards discarded])
 (defevent CityInfectedEvent [aggregate-id city-id nb-cubes color])
 (defevent OutbreakChainEvent [aggregate-id outbreaks])
+(defevent FirstPlayerDesignatedEvent [aggregate-id user-id])
 
 ;;
 ;; Entities
@@ -289,6 +291,19 @@
           nb-cubes-outbreak (:nb-cubes-outbreak-threshold ruleset)
           nb-cubes-old (number-of-cubes game city-id color)
           nb-cubes-new (+ nb-cubes-old nb-cubes)]
+
+        ; TODO
+        ; Also, if there are not enough cubes to
+        ; add to the board when infecting, the game
+        ; immediately ends in defeat for all players.
+        ; TODO
+        ; Outbreak : Each time a city outbreaks, move
+        ; the Outbreaks Marker up one space on the Outbreak Indicator.
+        ; If the number of outbreaks ever reaches 8 (and the Outbreaks
+        ; Marker reaches the skull symbol), the game immediately ends
+        ; in defeat for all players. Also, if there are not enough
+        ; cubes to add to the board when infecting, the game immediately
+        ; ends in defeat for all players.
         (if (> nb-cubes-new nb-cubes-outbreak)
             (trigger-outbreak game city-id color)
             [(->CityInfectedEvent game-id city-id nb-cubes color)])))
@@ -372,6 +387,19 @@
             (when-not (:state user)
                 (throw (Exception. (str "No user found with id: " user-id))))
         [(->GameDifficultyChangedEvent game-id user-id (:difficulty command))]))
+
+    DesignateFirstPlayerCommand
+    (perform [command context]
+        (let [game-id (:game-id command)
+              user-id (:user-id command)
+              game (load-game game-id)
+              state (:state game)
+              players (:players game)]
+            (when-not (= state :created)
+                (throw (Exception. (str "Incorrect state: " state))))
+            (when (empty? (filter (fn [p] ) players)))
+                (throw (Exception. (str "Insufficient number of player: " (count players))))
+            (throw (Exception. "Not implemented..."))))
 
     StartGameCommand
     (perform [command context]

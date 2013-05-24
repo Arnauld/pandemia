@@ -3,6 +3,8 @@
 (defn system-id [obj]
   (Integer/toHexString (System/identityHashCode obj)))
 
+(defn uuid [] (str (java.util.UUID/randomUUID)))
+
 (defn delta [actual changeset]
     (reduce 
         (fn [res [k v]] 

@@ -58,4 +58,4 @@
                     (create-event ~event-kw (list ~@fields-kw) (list ~@params)))
             (defn ~ctor-name-map [value-map#]
                     (map->create-event ~event-kw (list ~@fields-kw) value-map#)))))
-
+        

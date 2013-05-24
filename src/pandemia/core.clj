@@ -25,13 +25,6 @@
 
 
 ;;
-;;
-;;
-
-(defn uuid [instance]
-  (merge {:id (str (java.util.UUID/randomUUID))} instance))
-
-;;
 ;; Event Storage
 ;;
 

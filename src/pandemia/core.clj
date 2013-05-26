@@ -23,7 +23,6 @@
   Object
   (toString [this] (str "EventStream@" (system-id this) "{v: " version ", events: " events "}")))
 
-
 ;;
 ;; Event Storage
 ;;
@@ -49,11 +48,29 @@
   (dorun (map save-event (:events unit-of-work))))
 
 ;;
-;;
+;; Event Bus
 ;;
 
+(defprotocol EventListener
+  (onEvent [event]))
+
+(defprotocol EventBus
+  (publish [this event])
+  (subscribe [this listener]))
+
+(def ^:dynamic *event-bus* (atom nil))
+
+(defmacro with-event-bus [bus & body]
+  `(binding [*event-bus* (atom ~bus)]
+      (do ~@body)))
+
+(defn get-event-bus [] @*event-bus*)
+
 (defn publish-event [event]
-  (println (str "Publishing " event)))
+  (let [eb (get-event-bus)]
+    (if (nil? eb) 
+        (println (str "Publishing " event))
+        (publish eb event))))
 
 
 ;;

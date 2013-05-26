@@ -25,10 +25,13 @@
                    :nb-cubes 1
                    :city-id :Madrid}
             serialized (to-edn event)
+            ; publish the event in edn format
+            ; then read it back
             redis-res (wredis 
                           (redis/ping)
                           (redis/rpush uuid serialized)
                           (redis/lrange uuid 0 -1))
             event-list (nth redis-res 2)
             retrieved (first event-list)]
+            ; make sure once back the event is the same...
         (is (= event (from-edn retrieved))))))

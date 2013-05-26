@@ -1,14 +1,5 @@
 (ns pandemia.event)
 
-(defn camel-to-dash
-  [s]
-  (let [b (StringBuilder.)
-          f (fn [pred c]
-              (if (and (Character/isUpperCase c)
-                       (< 0 (.length pred)))
-                  (.append pred \-))
-              (.append pred (Character/toLowerCase c)))]
-          (.toString (reduce f b s))))
 
 ;;
 ;; http://david-mcneil.com/post/765563763/enhanced-clojure-records

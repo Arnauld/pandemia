@@ -51,12 +51,10 @@
 ;; Event Bus
 ;;
 
-(defprotocol EventListener
-  (onEvent [event]))
-
 (defprotocol EventBus
   (publish [this event])
-  (subscribe [this listener]))
+  (subscribe [this listener])
+  (unsubscribe [this listener-ref]))
 
 (def ^:dynamic *event-bus* (atom nil))
 
@@ -72,6 +70,17 @@
         (println (str "Publishing " event))
         (publish eb event))))
 
+(defn subscribe-event [listener]
+  (let [eb (get-event-bus)]
+    (if (nil? eb) 
+        (throw (Exception. "No event-bus defined (@see in-memory-event-bus as fallback...)"))
+        (subscribe eb listener))))
+
+(defn unsubscribe-event [listener-ref]
+  (let [eb (get-event-bus)]
+    (if (nil? eb) 
+        (throw (Exception. "No event-bus defined (@see in-memory-event-bus as fallback...)"))
+        (unsubscribe eb listener-ref))))
 
 ;;
 ;; Unit Of Work

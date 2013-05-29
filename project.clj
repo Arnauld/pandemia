@@ -23,8 +23,16 @@
 
                   ; http://http-kit.org/
                   ; HTTP client/server for Clojure
-                  [http-kit "2.1.2"]
-                 ]
+                 [http-kit "2.1.2"]
+
+                  ; https://github.com/weavejester/compojure
+                  ; A concise routing DSL for Ring/Clojure 
+                 [compojure "1.1.5"]
+
+                  ; https://github.com/fhd/clostache
+                  ; {{ mustache }} for Clojure
+                 [de.ubercode.clostache/clostache "1.3.1"]
+                ]
   :plugins [[lein-cucumber "1.0.2"]]
   :cucumber-feature-paths ["features/"]
   :source-paths ["src/"]

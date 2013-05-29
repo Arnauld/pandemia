@@ -15,6 +15,7 @@
 			 :aggregate-id "game-1", 
 			 :event-type :pandemia.game.CityInfectedEvent})
 
+(defrecord AnEvent [id x y])
 
 (deftest cheshire-usages-test
   (testing "event1 -> json"
@@ -22,4 +23,10 @@
 
   (testing "json -> event1 (what about keywords?)"
   	(let [parsed (from-json (to-json event1))]
-  		(is (not= event1 parsed)))))
+  		(is (not= event1 parsed))))
+
+  (testing "record -> json"
+    (let [event (->AnEvent :event-id {:players ["pl1" "pl2"]} 17)
+          json  (to-json event)]
+      (is (= json 
+        "{\"id\":\"event-id\",\"x\":{\"players\":[\"pl1\",\"pl2\"]},\"y\":17}")))))

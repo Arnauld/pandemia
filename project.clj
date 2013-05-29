@@ -5,6 +5,9 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.0"]
                  [org.clojure/tools.reader "0.7.4"]
+                 [org.clojure/tools.logging "0.2.6"]
+
+                 [ch.qos.logback/logback-classic "1.0.13"]
                   
                   ; https://github.com/ptaoussanis/carmine
                   ; Clojure Redis client & message queue 
@@ -12,7 +15,7 @@
                   
                   ; https://github.com/clojure/data.json
                   ; JSON parser/generator to/from Clojure data structures.
-                 [org.clojure/data.json "0.2.2"]
+                  ; [org.clojure/data.json "0.2.2"]
                   
                   ; https://github.com/dakrone/cheshire
                   ; clojure-json had really nice features (custom encoders), 

@@ -1,16 +1,25 @@
 (ns pandemia.webserver
     (:use [compojure.handler :only [site]] ; form, query params decode; cookie; session, etc
           [compojure.core :only [defroutes GET POST DELETE ANY context]]
-          [clojure.tools.logging :only (info error)]
+          [clojure.tools.logging :only (debug info error)]
           org.httpkit.server
           [ring.util.response :only (file-response)])
     (:require [cheshire.core   :as json]
               [compojure.route :as route] ; [files not-found]
-              [pandemia.webcontroller :as controller])) 
+              [pandemia.webcontroller :as controller]
+              [pandemia.web :as web])) 
 
 ;; ---
 
 (def default-conf {:port 5001})
+
+;; ---
+
+;; TODO check something :)
+(defn secure [req]
+	(let [cookies (:cookies req)]
+		(debug "Secure cookies: " cookies)
+		req))
 
 ;; ---
 
@@ -21,35 +30,26 @@
                    "Content-Type" "text/html"}
          :body    (str "<p>Moved to " location "</p>")}))
 
-(defn apply-chain [req handlers]
-    (let [res (reduce (fn [pred handler] 
-                            (apply handler [pred])) req handlers)]
-        res))
-
 ;; ---
 
-(defprotocol JsonRender
-    (render-json [this request]))
-
-(extend-protocol JsonRender
-    pandemia.webcontroller.Ok
-    (render-json [this request]
-        {:status  200
-         :headers {"Content-Type" "application/json"}
-         :body    (json/generate-string (:body this))})
-
-    pandemia.webcontroller.Err
-    (render-json [this request]
-        {:status  (:code-err this)
-         :headers {"Content-Type" "application/json"}
-         :body    (json/generate-string (:body this))}))
+(defn render-json [response]
+  (cond
+    (web/err? response)
+      {:status  (:code-err response)
+       :headers {"Content-Type" "application/json"}
+       :body    (json/generate-string (:body response))}
+    :else
+      {:status  200
+       :headers {"Content-Type" "application/json"}
+       :body    (json/generate-string (:body response))}
+    ))
 
 ;; ---
 
 (defn as-json [handlers]
-    (fn [req]
-        (let [res (apply-chain req handlers)]
-            (render-json res req))))
+    (let [chain (web/handler-chain handlers)]
+      (fn [req]
+        (render-json (apply chain [req])))))
 
 ;; ---
 
@@ -74,8 +74,8 @@
   							(file-response "/index.html" {:root static-dir})))
   (GET "/ws" []  ws-handler)     ;; websocket
   (context "/user" []
-           (GET  "/:id" [] (as-json [controller/get-user-by-id]))
-           (POST "/:id" [] (as-json [controller/update-userinfo])))
+           (GET  "/:id" [] (as-json [secure controller/get-user-by-id]))
+           (POST "/:id" [] (as-json [secure controller/update-userinfo])))
   (route/files "/static/" {:root static-dir}) ;; static file url prefix /static, in `public` folder
   (route/not-found "<p>Page not found.</p>")) ;; all other, return 404
 

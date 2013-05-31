@@ -1,6 +1,6 @@
-(ns pandemia.webserver-test
+(ns pandemia.webcontroller-test
     (:use clojure.test
-          pandemia.webserver))
+          pandemia.webcontroller))
 
 ;; --- DUMMY
 
